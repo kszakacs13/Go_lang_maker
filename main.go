@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-var InputString = "6+6+5"
+var InputString = "6+6"
 
 var Rules = map[string]string{
-	"ADD": "NUM '\\+' ADD || NUM",
+	"ADD": "NUM '\\+' NUM || NUM",
 	"NUM": "'[0-9]+'",
 }
 
