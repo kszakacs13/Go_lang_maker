@@ -3,19 +3,20 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 var InputString = "6+6+5"
 
 var Rules = map[string]string{
-	"ADD": "NUM '+' NUM || NUM",
+	"ADD": "NUM '\\+' ADD || NUM",
 	"NUM": "'[0-9]+'",
 }
 
 func main() {
 
-	fmt.Println(parser(InputString, "ADD", Rules))
+	fmt.Println(parser(InputString, "ADD", Rules)) // Instead "ADD" we will put the foremost element
 
 }
 
@@ -43,7 +44,6 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 			if strings.Contains(element, "'") {
 				regex := betweenSigns(element, "'")
-				// regex = "`" + regex + "`"
 
 				pattern := regexp.MustCompile(regex)
 
@@ -59,12 +59,12 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 					regexElement := pattern.FindString(expressionString)
 
-					allElements = append(allElements, []string{regexElement, "regex"})
+					allElements = append(allElements, []string{regexElement, "regex", strconv.Itoa(positionOfRegex[0]), strconv.Itoa(positionOfRegex[1])}) // We save the positions to extract the important elements later
 				}
 
 			} else {
 
-				// Here we extract every non REGEX element - if we have just one and no regex elements, we ought to go recursive with that one deeper in the Rules map
+				// Here we extract every non REGEX element - if we have just one and no regex elements, we ought to go recursive with that one deeper in the Rules map - also we have to save the part that corresponds to the non-regex element
 
 				allElements = append(allElements, []string{element, "non-regex"})
 
@@ -76,14 +76,50 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 			continue // If we did not find a regex specified in the rule, we continue to the next rule in the row
 		}
 
+		// Extract the positions of the non-regex parts (they are all the parts that are not in the regex)
+
+		extractStart := 0
+
+		extractedPositions := []string{}
+
+		foundNonRegex := false
+
+		for i := 0; i < len(allElements); i++ {
+
+			actualElement := allElements[i]
+
+			if actualElement[1] == "regex" {
+
+				regexStart, _ := strconv.Atoi(actualElement[2])
+				regexEnd, _ := strconv.Atoi(actualElement[3])
+
+				if extractStart != regexStart {
+					extractedPositions = append(extractedPositions, expressionString[extractStart:regexStart])
+					extractStart = regexEnd
+				}
+
+			} else {
+				foundNonRegex = true
+			}
+
+		}
+
+		if extractStart != len(expressionString) && foundNonRegex {
+			extractedPositions = append(extractedPositions, expressionString[extractStart:])
+		}
+
 		// Go recursive with all the non-regex elements, if there is none then we have to return the regex match
+
+		nonRegexElemCount := 0
 
 		for i := 0; i < len(allElements); i++ {
 
 			if allElements[i][1] == "non-regex" {
-				subTree := parser(expressionString, allElements[i][0], rules)
+				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
 				parserTree = append(parserTree, ruleRowName)
 				parserTree = append(parserTree, subTree)
+
+				nonRegexElemCount++
 			} else {
 				parserTree = append(parserTree, ruleRowName)
 				parserTree = append(parserTree, allElements[i][0])
