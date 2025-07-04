@@ -10,23 +10,20 @@ var InputString = "6+6+5"
 
 var Rules = map[string]string{
 	"ADD": "NUM '+' NUM || NUM",
-	"NUM": "'[0-9]'",
+	"NUM": "'[0-9]+'",
 }
 
 func main() {
 
-	fmt.Println("Hi")
+	fmt.Println(parser(InputString, "ADD", Rules))
 
 }
 
-func parser(expressionString string, ruleRow string) struct{} {
+func parser(expressionString string, ruleRowName string, rules map[string]string) []interface{} {
 
-	type parsingTree struct {
-		OpType   string
-		Children []*parsingTree
-	}
+	var parserTree []interface{}
 
-	// Looping through the actual ruleRow's elements, searching for a regex
+	ruleRow := rules[ruleRowName]
 
 	rulesInRow := strings.Split(ruleRow, "||")
 
@@ -34,44 +31,77 @@ func parser(expressionString string, ruleRow string) struct{} {
 
 	for j := 0; j < len(rulesInRow); j++ {
 
-		ruleElements := strings.Split(ruleRow, " ")
+		ruleElements := strings.Split(rulesInRow[j], " ")
 
-		regex := ""
+		someRegexNotFound := false
+
+		allElements := [][]string{}
 
 		for i := 0; i < len(ruleElements); i++ {
 
 			element := ruleElements[i]
 
 			if strings.Contains(element, "'") {
-				regex = betweenSigns(element, "'")
-				regex = "`" + regex + "`"
+				regex := betweenSigns(element, "'")
+				// regex = "`" + regex + "`"
+
 				pattern := regexp.MustCompile(regex)
 
 				// Searching if the REGEX occurs in the expressionString
 
 				positionOfRegex := pattern.FindStringIndex(expressionString)
 
-				if positionOfRegex != nil {
+				if positionOfRegex == nil {
 
-					// If we found it, we get the substrings of the rule
+					someRegexNotFound = true // Continue to the next rule in the row if no matches found
 
+				} else {
+
+					regexElement := pattern.FindString(expressionString)
+
+					allElements = append(allElements, []string{regexElement, "regex"})
 				}
+
+			} else {
+
+				// Here we extract every non REGEX element - if we have just one and no regex elements, we ought to go recursive with that one deeper in the Rules map
+
+				allElements = append(allElements, []string{element, "non-regex"})
+
+			}
+
+		}
+
+		if someRegexNotFound {
+			continue // If we did not find a regex specified in the rule, we continue to the next rule in the row
+		}
+
+		// Go recursive with all the non-regex elements, if there is none then we have to return the regex match
+
+		for i := 0; i < len(allElements); i++ {
+
+			if allElements[i][1] == "non-regex" {
+				subTree := parser(expressionString, allElements[i][0], rules)
+				parserTree = append(parserTree, ruleRowName)
+				parserTree = append(parserTree, subTree)
+			} else {
+				parserTree = append(parserTree, ruleRowName)
+				parserTree = append(parserTree, allElements[i][0])
 			}
 
 		}
 
 	}
 
+	return parserTree
+
 }
 
-func betweenSigns(stringToSlice string, signs string) []string {
+func betweenSigns(stringToSlice string, signs string) string {
 
 	insideSigns := false
 
-	outputString := []string{}
-
-	allOthers := []string{}
-	allOthersIndex := 0
+	outputString := ""
 
 	for character := 0; character < len(stringToSlice); character++ {
 
@@ -81,27 +111,11 @@ func betweenSigns(stringToSlice string, signs string) []string {
 			// If we bump into a separator char, we will track if we are inside or outside the string enclosed by them
 			insideSigns = !insideSigns
 
-			if !insideSigns {
-				allOthersIndex++
-			}
-
 		} else {
 			// If not a separator and we are not inbetween separators, we add to the output string
 			if insideSigns {
 
-				if len(outputString)-1 < allOthersIndex {
-					outputString = append(outputString, actualChar)
-				} else {
-					outputString[allOthersIndex] += actualChar
-				}
-
-			} else {
-
-				if len(allOthers)-1 < allOthersIndex {
-					allOthers = append(allOthers, actualChar)
-				} else {
-					allOthers[allOthersIndex] += actualChar
-				}
+				outputString += actualChar
 
 			}
 		}
