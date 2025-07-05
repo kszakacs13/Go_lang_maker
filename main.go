@@ -7,7 +7,9 @@ import (
 	"strings"
 )
 
-var InputString = "6+6+5+5"
+// InputString
+
+var InputString = "6+4+5+5"
 
 // grammer
 
@@ -52,6 +54,8 @@ func main() {
 
 	parserTreeInterface := parser(InputString, "ADD", Grammer) // Instead "ADD" we will put the foremost element
 
+	/* DISPLAY PASER TREE
+
 	parserTreeToDisplay := displayParserTree(parserTreeInterface)
 
 	for _, row := range parserTreeToDisplay {
@@ -60,9 +64,13 @@ func main() {
 
 	}
 
+	*/
+
 	fmt.Println(lexer(Rules, parserTreeInterface))
 
 }
+
+// THE FUNCTIONAL PART
 
 // TODO: be able to omit some characters in the rules by specifying them under the name ~omit~ - func omitChars(Grammer)
 
@@ -169,14 +177,16 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 		for i := 0; i < len(allElements); i++ {
 
-			parserTree = append(parserTree, ruleRowName) // Rule name for the lexer to work
+			var subParserTree []interface{}
 
-			parserTree = append(parserTree, ruleNumForActualRow) // Add the number of the rule (again for the lexer)
+			subParserTree = append(subParserTree, ruleRowName) // Rule name for the lexer to work
+
+			subParserTree = append(subParserTree, ruleNumForActualRow) // Add the number of the rule (again for the lexer)
 
 			if allElements[i][1] == "non-regex" {
 				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
 
-				parserTree = append(parserTree, subTree)
+				subParserTree = append(subParserTree, subTree)
 
 				nonRegexElemCount++
 			} else {
@@ -184,13 +194,15 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 				// If there are non-regex elements present as well, we mark the element with an operator flag - this will be used in the lexer only when there are no rules
 
 				if foundNonRegex {
-					parserTree = append(parserTree, allElements[i][0])
-					parserTree = append(parserTree, "OP-REGEX")
+					subParserTree = append(subParserTree, allElements[i][0])
+					subParserTree = append(subParserTree, "OP-REGEX")
 				} else {
-					parserTree = append(parserTree, allElements[i][0])
+					subParserTree = append(subParserTree, allElements[i][0])
 				}
 
 			}
+
+			parserTree = append(parserTree, subParserTree)
 
 		}
 
@@ -295,7 +307,9 @@ func lexer(rules map[string]func(ruleNum int, allValuesToPass []string) string, 
 			// If the third elemnt is an iterface, loop further
 
 			if checkIfInterfaceElem(interf, 2) {
-				changeInterfaceElem(interf, 2, lexer(rules, getSubInterface(interf, 2)))
+				returnedElem := lexer(rules, getSubInterface(interf, 2))
+
+				parserTree[id] = changeInterfaceElem(interf, 2, returnedElem)
 			}
 
 		}
