@@ -133,12 +133,12 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 			parserTree = append(parserTree, ruleRowName) // Rule name for the lexer to work
 
+			parserTree = append(parserTree, ruleNumForActualRow) // Add the number of the rule (again for the lexer)
+
 			if allElements[i][1] == "non-regex" {
 				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
 
-				parserTree = append(parserTree, subTree[0]) // Add the number of the rule (again for the lexer)
-
-				parserTree = append(parserTree, subTree[1])
+				parserTree = append(parserTree, subTree)
 
 				nonRegexElemCount++
 			} else {
@@ -158,14 +158,7 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 	}
 
-	// Return the value with the number of rule in the row
-
-	var returnInterface []interface{}
-
-	returnInterface = append(returnInterface, ruleNumForActualRow)
-	returnInterface = append(returnInterface, parserTree)
-
-	return returnInterface
+	return parserTree
 
 }
 
