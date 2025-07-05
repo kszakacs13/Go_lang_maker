@@ -7,16 +7,24 @@ import (
 	"strings"
 )
 
-var InputString = "6+6"
+var InputString = "6+6+5+5"
 
 var Rules = map[string]string{
-	"ADD": "NUM '\\+' NUM || NUM",
+	"ADD": "NUM '\\+' ADD || NUM",
 	"NUM": "'[0-9]+'",
 }
 
 func main() {
 
-	fmt.Println(parser(InputString, "ADD", Rules)) // Instead "ADD" we will put the foremost element
+	parserTreeInterface := parser(InputString, "ADD", Rules) // Instead "ADD" we will put the foremost element
+
+	parserTreeToDisplay := displayParserTree(parserTreeInterface)
+
+	for _, row := range parserTreeToDisplay {
+
+		fmt.Println(row)
+
+	}
 
 }
 
@@ -26,13 +34,15 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 	ruleRow := rules[ruleRowName]
 
-	rulesInRow := strings.Split(ruleRow, "||")
+	rulesInRow := strings.Split(ruleRow, " || ")
 
 	// Going through all rules in a row and extract the operators belonging to them
+	ruleNum := 0
+	ruleNumForActualRow := ""
 
-	for j := 0; j < len(rulesInRow); j++ {
+	for ruleNum < len(rulesInRow) {
 
-		ruleElements := strings.Split(rulesInRow[j], " ")
+		ruleElements := strings.Split(rulesInRow[ruleNum], " ")
 
 		someRegexNotFound := false
 
@@ -72,8 +82,15 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 		}
 
+		ruleNumForActualRow = strconv.Itoa(ruleNum) // To save the actual rule number for later, when we want to save it to the parser tree
+
+		// If we did not find a regex specified in the rule, we continue to the next rule in the row, however otherwise we do not want to get the next rule
+
 		if someRegexNotFound {
-			continue // If we did not find a regex specified in the rule, we continue to the next rule in the row
+			ruleNum++
+			continue
+		} else {
+			ruleNum = len(rulesInRow) // Terminate the loop - we did not use break keyword, cause then i would need to include all the code below into this brach of the if - this would not appeal to me
 		}
 
 		// Extract the positions of the non-regex parts (they are all the parts that are not in the regex)
@@ -114,22 +131,41 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 		for i := 0; i < len(allElements); i++ {
 
+			parserTree = append(parserTree, ruleRowName) // Rule name for the lexer to work
+
 			if allElements[i][1] == "non-regex" {
 				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
-				parserTree = append(parserTree, ruleRowName)
-				parserTree = append(parserTree, subTree)
+
+				parserTree = append(parserTree, subTree[0]) // Add the number of the rule (again for the lexer)
+
+				parserTree = append(parserTree, subTree[1])
 
 				nonRegexElemCount++
 			} else {
-				parserTree = append(parserTree, ruleRowName)
-				parserTree = append(parserTree, allElements[i][0])
+
+				// If there are non-regex elements present as well, we mark the element with an operator flag - this will be used in the lexer only when there are no rules
+
+				if foundNonRegex {
+					parserTree = append(parserTree, allElements[i][0])
+					parserTree = append(parserTree, "OP-REGEX")
+				} else {
+					parserTree = append(parserTree, allElements[i][0])
+				}
+
 			}
 
 		}
 
 	}
 
-	return parserTree
+	// Return the value with the number of rule in the row
+
+	var returnInterface []interface{}
+
+	returnInterface = append(returnInterface, ruleNumForActualRow)
+	returnInterface = append(returnInterface, parserTree)
+
+	return returnInterface
 
 }
 
@@ -161,3 +197,47 @@ func betweenSigns(stringToSlice string, signs string) string {
 	return outputString
 
 }
+
+// Function to display parserTree
+
+func displayParserTree(parserTree []interface{}) []string {
+
+	displaySlice := []string{}
+
+	// If it contains an interface we pass it down one level lower into the recursion
+
+	for _, elem := range parserTree {
+
+		switch v := elem.(type) {
+
+		case []interface{}:
+
+			subInterfaceBreak := displayParserTree(v)
+
+			for _, subElem := range subInterfaceBreak {
+
+				// We also add tabs to all slice elements we got in return
+
+				displaySlice = append(displaySlice, "\t"+subElem)
+
+			}
+
+		case string:
+
+			// If it does not contain any interfaces, only strings we return those strings with no tab
+
+			displaySlice = append(displaySlice, v)
+
+		}
+
+	}
+
+	return displaySlice
+
+}
+
+// LEXER: goes through the interface, gets into the deepest object recursively, and if the elements are not interfaces anymore, applies the appropriate function to the rule
+
+// DO NOT NEED TO ADD THE OP-REGEX ELEMENT IF THERE IS A RULE PARSED TO THE GRAMMER
+
+// Also: check which rule applies in the row - func ruleForGramm(row string, ruleNum int, inputVars []string) - and count the non regex elemnts from parsing tree
