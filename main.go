@@ -9,14 +9,48 @@ import (
 
 var InputString = "6+6+5+5"
 
-var Rules = map[string]string{
+// grammer
+
+var Grammer = map[string]string{
 	"ADD": "NUM '\\+' ADD || NUM",
 	"NUM": "'[0-9]+'",
 }
 
+// functions for rules
+
+func addition(ruleNum int, allValuesToPass []string) string {
+
+	returnString := ""
+
+	switch ruleNum {
+	case 0:
+
+		numOne, _ := strconv.Atoi(allValuesToPass[0])
+		numTwo, _ := strconv.Atoi(allValuesToPass[1])
+
+		additionVal := numOne + numTwo
+
+		returnString = strconv.Itoa(additionVal)
+
+	case 1:
+		returnString = allValuesToPass[0]
+
+	}
+
+	return returnString
+}
+
+// rules assigned to grammer
+
+var Rules = map[string]func(ruleNum int, allValuesToPass []string) string{
+	"ADD": addition,
+}
+
+// test
+
 func main() {
 
-	parserTreeInterface := parser(InputString, "ADD", Rules) // Instead "ADD" we will put the foremost element
+	parserTreeInterface := parser(InputString, "ADD", Grammer) // Instead "ADD" we will put the foremost element
 
 	parserTreeToDisplay := displayParserTree(parserTreeInterface)
 
@@ -26,7 +60,11 @@ func main() {
 
 	}
 
+	fmt.Println(lexer(Rules, parserTreeInterface))
+
 }
+
+// TODO: be able to omit some characters in the rules by specifying them under the name ~omit~ - func omitChars(Grammer)
 
 func parser(expressionString string, ruleRowName string, rules map[string]string) []interface{} {
 
@@ -231,6 +269,166 @@ func displayParserTree(parserTree []interface{}) []string {
 
 // LEXER: goes through the interface, gets into the deepest object recursively, and if the elements are not interfaces anymore, applies the appropriate function to the rule
 
-// DO NOT NEED TO ADD THE OP-REGEX ELEMENT IF THERE IS A RULE PARSED TO THE GRAMMER
+func lexer(rules map[string]func(ruleNum int, allValuesToPass []string) string, parserTree []interface{}) string {
 
-// Also: check which rule applies in the row - func ruleForGramm(row string, ruleNum int, inputVars []string) - and count the non regex elemnts from parsing tree
+	returnedSolution := ""
+
+	ruleName := ""
+
+	ruleNum := -1
+
+	// Check for the grammar name in each elment of the row
+
+	for id, i := range parserTree {
+
+		switch interf := i.(type) {
+		case []interface{}:
+
+			if id == 0 {
+
+				ruleName = getInterfaceElement(interf, 0)
+
+				ruleNum, _ = strconv.Atoi(getInterfaceElement(interf, 1))
+
+			}
+
+			// If the third elemnt is an iterface, loop further
+
+			if checkIfInterfaceElem(interf, 2) {
+				changeInterfaceElem(interf, 2, lexer(rules, getSubInterface(interf, 2)))
+			}
+
+		}
+
+	}
+
+	// Here everything should be assigned a value, not an interface
+
+	// If there is a rule we omit the OP-REGEX types
+
+	containsRule := false
+
+	if _, ok := rules[ruleName]; ok {
+		containsRule = true
+	} else {
+		containsRule = false
+	}
+
+	allValuesToPass := []string{}
+
+	for _, i := range parserTree {
+
+		// Return the value of the string - or if there is a function for it return the val of that function with giving in the non OP-REGEX variables
+
+		switch interf := i.(type) {
+		case []interface{}:
+
+			if containsRule {
+
+				if lenInterface(interf) < 4 { // Smaller than 4 if not OP-REGEX
+					allValuesToPass = append(allValuesToPass, getInterfaceElement(interf, 2))
+				}
+
+			} else {
+
+				allValuesToPass = append(allValuesToPass, getInterfaceElement(interf, 2))
+
+			}
+		}
+
+	}
+
+	// If we have a funciton to this we return the values with that
+
+	if containsRule {
+		returnedSolution = rules[ruleName](ruleNum, allValuesToPass)
+	} else {
+		returnedSolution = strings.Join(allValuesToPass, "")
+	}
+
+	return returnedSolution
+
+}
+
+func getInterfaceElement(inputInterface []interface{}, elementNum int) string {
+
+	returnVal := ""
+
+	for index, i := range inputInterface {
+		if index == elementNum {
+			switch v := i.(type) {
+			case string:
+				returnVal = v
+			}
+		}
+	}
+
+	return returnVal
+
+}
+
+func getSubInterface(inputInterface []interface{}, elementNum int) []interface{} {
+
+	var returnVal []interface{}
+
+	for index, i := range inputInterface {
+		if index == elementNum {
+			switch v := i.(type) {
+			case []interface{}:
+				returnVal = v
+			}
+		}
+	}
+
+	return returnVal
+
+}
+
+func checkIfInterfaceElem(inputInterface []interface{}, elementNum int) bool {
+
+	var returnVal bool
+
+	for index, i := range inputInterface {
+		if index == elementNum {
+			_, ok := i.([]interface{})
+			returnVal = ok
+		}
+	}
+
+	return returnVal
+
+}
+
+func changeInterfaceElem(inputInterface []interface{}, elementNum int, assignNewVal string) []interface{} {
+
+	var returnVal []interface{}
+
+	for index, i := range inputInterface {
+		if index == elementNum {
+			_, ok := i.([]interface{})
+			if ok {
+				returnVal = append(returnVal, assignNewVal)
+			} else {
+				returnVal = append(returnVal, i)
+			}
+		} else {
+			returnVal = append(returnVal, i)
+		}
+
+	}
+
+	return returnVal
+
+}
+
+func lenInterface(inputInterface []interface{}) int {
+
+	returnLen := 0
+
+	for ind, _ := range inputInterface {
+		returnLen = ind + 1
+	}
+
+	return returnLen
+
+}
