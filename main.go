@@ -9,13 +9,14 @@ import (
 
 // InputString
 
-var InputString = "6+4+5+5"
+var InputString = "6 + 4 + 5 + 5"
 
 // grammer
 
 var Grammer = map[string]string{
-	"ADD": "NUM '\\+' ADD || NUM",
-	"NUM": "'[0-9]+'",
+	"ADD":      "NUM '\\+' ADD || NUM",
+	"NUM":      "'[0-9]+'",
+	"~ignore~": "[ \t\n]+",
 }
 
 // functions for rules
@@ -52,7 +53,9 @@ var Rules = map[string]func(ruleNum int, allValuesToPass []string) string{
 
 func main() {
 
-	parserTreeInterface := parser(InputString, "ADD", Grammer) // Instead "ADD" we will put the foremost element
+	ignoredPartsInput := ignoreParts(Grammer, InputString) // If we have an ~ignore~ property in the grammer
+
+	parserTreeInterface := parser(ignoredPartsInput, "ADD", Grammer) // Instead "ADD" we will put the foremost element
 
 	/* DISPLAY PASER TREE
 
@@ -71,6 +74,8 @@ func main() {
 }
 
 // THE FUNCTIONAL PART
+
+var RegexSeparator = "'" // Changeable
 
 // TODO: be able to omit some characters in the rules by specifying them under the name ~omit~ - func omitChars(Grammer)
 
@@ -98,8 +103,8 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 			element := ruleElements[i]
 
-			if strings.Contains(element, "'") {
-				regex := betweenSigns(element, "'")
+			if strings.Contains(element, RegexSeparator) {
+				regex := betweenSigns(element, RegexSeparator)
 
 				pattern := regexp.MustCompile(regex)
 
@@ -445,4 +450,13 @@ func lenInterface(inputInterface []interface{}) int {
 
 	return returnLen
 
+}
+
+// Ignore special
+
+func ignoreParts(grammar map[string]string, inputString string) string {
+	re := regexp.MustCompile(grammar["~ignore~"])
+	outputExpression := re.ReplaceAllString(inputString, "")
+
+	return outputExpression
 }
