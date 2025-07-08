@@ -55,9 +55,9 @@ func main() {
 
 	ignoredPartsInput := ignoreParts(Grammer, InputString) // If we have an ~ignore~ property in the grammer
 
-	parserTreeInterface := parser(ignoredPartsInput, "ADD", Grammer) // Instead "ADD" we will put the foremost element
+	parserTreeInterface := parser(ignoredPartsInput, "ADD", Grammer, RegexSeparator) // Instead "ADD" we will put the foremost element
 
-	/* DISPLAY PASER TREE
+	/*// DISPLAY PASER TREE
 
 	parserTreeToDisplay := displayParserTree(parserTreeInterface)
 
@@ -65,9 +65,7 @@ func main() {
 
 		fmt.Println(row)
 
-	}
-
-	*/
+	}*/
 
 	fmt.Println(lexer(Rules, parserTreeInterface))
 
@@ -79,7 +77,7 @@ var RegexSeparator = "'" // Changeable
 
 // TODO: be able to omit some characters in the rules by specifying them under the name ~omit~ - func omitChars(Grammer)
 
-func parser(expressionString string, ruleRowName string, rules map[string]string) []interface{} {
+func parser(expressionString string, ruleRowName string, rules map[string]string, regexSeparator string) []interface{} {
 
 	var parserTree []interface{}
 
@@ -103,14 +101,14 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 			element := ruleElements[i]
 
-			if strings.Contains(element, RegexSeparator) {
-				regex := betweenSigns(element, RegexSeparator)
+			if strings.Contains(element, regexSeparator) {
+				regex := betweenSigns(element, regexSeparator)
 
 				pattern := regexp.MustCompile(regex)
 
 				// Searching if the REGEX occurs in the expressionString
 
-				positionOfRegex := pattern.FindStringIndex(expressionString)
+				positionOfRegex := pattern.FindAllStringIndex(expressionString, -1)
 
 				if positionOfRegex == nil {
 
@@ -118,9 +116,68 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 
 				} else {
 
-					regexElement := pattern.FindString(expressionString)
+					// Loop through all the occurances of the regex pattern, loop through all the downstream elements, check if any applies to the pattern better, go till we find a pattern that best matches ours, if we don't then continue to next loop by setting someRegexNotFound to true
 
-					allElements = append(allElements, []string{regexElement, "regex", strconv.Itoa(positionOfRegex[0]), strconv.Itoa(positionOfRegex[1])}) // We save the positions to extract the important elements later
+					downStreamElems := getDownStreamElements(rules, ruleRowName, regexSeparator)
+
+					found_best_match := false
+					best_match := []int{}
+
+					for _, regexPos := range positionOfRegex {
+
+						regexUsable := true
+
+						for _, dsElem := range downStreamElems {
+
+							// Check if any applies to the pattern
+
+							dsElemRow := rules[dsElem]
+
+							if strings.Contains(dsElemRow, regex) && !found_best_match {
+
+								allBlocks := strings.Split(dsElemRow, " ")
+
+								for _, block := range allBlocks {
+
+									if strings.Contains(block, regexSeparator) && !found_best_match {
+
+										sub_regex := betweenSigns(block, regexSeparator)
+										sub_pattern := regexp.MustCompile(sub_regex)
+
+										positionOfSubRegex := sub_pattern.FindAllStringIndex(expressionString, -1)
+
+										for _, sub_regex_pos := range positionOfSubRegex {
+											if (regexPos[0] >= sub_regex_pos[0] && regexPos[0] <= sub_regex_pos[1]) ||
+												(regexPos[1] >= sub_regex_pos[0] && regexPos[1] <= sub_regex_pos[1]) {
+												regexUsable = false
+											}
+										}
+
+									}
+
+								}
+
+							}
+
+						}
+
+						if regexUsable {
+							found_best_match = true
+							best_match = regexPos
+						}
+
+						if found_best_match {
+							break
+						}
+
+					}
+
+					if found_best_match {
+						allElements = append(allElements, []string{expressionString[best_match[0]:best_match[1]], "regex", strconv.Itoa(best_match[0]), strconv.Itoa(best_match[1])}) // We save the positions to extract the important elements later
+					} else {
+						someRegexNotFound = true
+					}
+
 				}
 
 			} else {
@@ -189,7 +246,7 @@ func parser(expressionString string, ruleRowName string, rules map[string]string
 			subParserTree = append(subParserTree, ruleNumForActualRow) // Add the number of the rule (again for the lexer)
 
 			if allElements[i][1] == "non-regex" {
-				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
+				subTree := parser(extractedPositions[nonRegexElemCount], allElements[i][0], rules, regexSeparator) // we ought to cut off the string we wanna work with -- but how to find the part which is representative of it? - go back to where we extract the inbetweens
 
 				subParserTree = append(subParserTree, subTree)
 
@@ -244,6 +301,82 @@ func betweenSigns(stringToSlice string, signs string) string {
 
 	return outputString
 
+}
+
+func getDownStreamElements(rules map[string]string, element string, separatorChar string) []string {
+
+	return_arr := []string{}
+
+	all_appeared := false
+
+	this_rows_elements := []string{element}
+
+	for !all_appeared {
+
+		last_rows_elements := this_rows_elements
+
+		this_rows_elements = []string{}
+
+		for _, row := range last_rows_elements {
+
+			ruleSides := strings.Split(rules[row], " || ")
+
+			for _, ruleSide := range ruleSides {
+
+				blocks := strings.Split(ruleSide, " ")
+
+				for _, block := range blocks {
+
+					// If the actual block is not yet in return_arr, we add it
+
+					if !arr_contains(return_arr, block) && !strings.Contains(block, separatorChar) {
+						return_arr = append(return_arr, block)
+						this_rows_elements = append(this_rows_elements, block) // At the same time we add it to the elements we wanna find next loop
+					}
+
+				}
+
+			}
+
+		}
+
+		if len(this_rows_elements) == 0 { // This means we did not find any unchecked element in this loop
+			all_appeared = true
+
+			return_arr = arr_remove(return_arr, element)
+		}
+
+	}
+
+	return return_arr
+
+}
+
+func arr_contains(arr []string, value string) bool {
+
+	contains := false
+
+	for _, i := range arr {
+		if i == value {
+			contains = true
+		}
+	}
+
+	return contains
+
+}
+
+func arr_remove(arr []string, value string) []string {
+
+	return_arr := []string{}
+
+	for _, i := range arr {
+		if i != value {
+			return_arr = append(return_arr, i)
+		}
+	}
+
+	return return_arr
 }
 
 // Function to display parserTree
