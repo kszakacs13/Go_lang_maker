@@ -1,5 +1,7 @@
 package main
 
+// run "go run main.go programmer.go" in your cmd to run this example
+
 import (
 	"fmt"
 	"strconv"
@@ -12,8 +14,8 @@ var InputString = "6 + 4 + 5 * 5 * 5 + 5"
 // grammar - we specify grammar rules, which will be tested on the string
 
 var Grammar = map[string]string{
-	"ADD":      "ADD '\\+' ADD || MULT",  // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
-	"MULT":     "MULT '\\*' MULT || NUM", // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
+	"ADD":      "ADD '\\+' ADD || MULT", // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
+	"MULT":     "MULT '\\*' MULT || NUM",
 	"NUM":      "'[0-9]+'",
 	"~ignore~": "[ \t\n]+",
 }
