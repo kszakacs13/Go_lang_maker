@@ -9,7 +9,7 @@ import (
 
 // A test InputString
 
-var InputString = "6 + 4 + 5 * 5 * 5 + 5"
+var InputString = "6 + 4 + 5 * 5 * 5 + 5 + 6"
 
 // grammar - we specify grammar rules, which will be tested on the string
 
@@ -85,5 +85,11 @@ func main() {
 
 	// lexer, although the name is misleading, assigns the interpreter logic to the grammar rules - it takes the grammar rules and the parser tree as its two arguments
 	fmt.Println(Lexer(Rules, parserTreeInterface))
+
+	// The two functions below serve a decorator role, that is good for the preprocessing of the inputString before we give it to the parser
+
+	fmt.Println(ChangeDecorator("AddFGdggDGGggfregg", ".gg", "gg", []string{"_"})) // This function changes a substr that matches a certain regex to the given string or strings, we give the inputstring, the pattern we wanna change, the pattern we wanna keep in the given substr, and the values we want to change the parts of the substring we don't want to keep to. If we add multiple values to the string array, every unkeeped part of the substring will change to the corresponding element (according to the number of the keeped parts). If there are more unkeeped parts than elements in the array, the function will use the last element for all the unkeeped parts that are over the limit.
+
+	fmt.Println(InsertDecorator("AddFGdggDGGggfregg", [][]string{{".g", "g"}, {".", "G"}}, []string{"_", "-"})) // This function puts strings between certain substrings that match the given patterns. First we add the input string, then we specify as many pattern pairs as we want, and then all the string to be inserted inbetween the corresponding patterns.
 
 }

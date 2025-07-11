@@ -528,3 +528,111 @@ func IgnoreParts(grammar map[string]string, inputString string) string {
 
 	return outputExpression
 }
+
+// Decorate the string as wanted
+
+func ChangeDecorator(inputString string, regexToFind string, regexToKeep string, changeTo []string) string { // We slice the found string by the regexToKeep, and add the elements of the changeTo inbetween, if there is too few however, we will replicate the last element (or recurse if the user want so)
+
+	decoratedString := ""
+
+	cursorLeftAt := 0
+
+	// Go through all the found regexes
+
+	re := regexp.MustCompile(regexToFind)
+	allFirstLevelRegexes := re.FindAllStringIndex(inputString, -1)
+
+	for _, regexPatt := range allFirstLevelRegexes {
+
+		actualSubStr := inputString[regexPatt[0]:regexPatt[1]]
+
+		// First we add all the unrelated strings to the output
+
+		decoratedString += inputString[cursorLeftAt:regexPatt[0]]
+		cursorLeftAt = regexPatt[1]
+
+		// In one part we check for all the regexes we should keep
+
+		re2 := regexp.MustCompile(regexToKeep)
+		allKeepRegexs := re2.FindAllStringIndex(actualSubStr, -1)
+
+		decoratedSubStr := ""
+
+		subCursor := 0
+
+		for i, shouldKeep := range allKeepRegexs {
+
+			indChangeTo := i
+
+			if i > len(changeTo)-1 {
+				indChangeTo = len(changeTo) - 1
+			}
+
+			// Where we are not inbetween we change the str
+			if shouldKeep[0] > subCursor {
+				decoratedSubStr += changeTo[indChangeTo] + actualSubStr[shouldKeep[0]:shouldKeep[1]]
+			} else {
+				decoratedSubStr += actualSubStr[shouldKeep[0]:shouldKeep[1]]
+			}
+
+			subCursor = shouldKeep[1]
+
+		}
+
+		lastRegexIndex := allKeepRegexs[len(allKeepRegexs)-1][1]
+
+		if lastRegexIndex < len(actualSubStr) {
+			decoratedSubStr += actualSubStr[lastRegexIndex:]
+		}
+
+		decoratedString += decoratedSubStr
+
+	}
+
+	return decoratedString
+}
+
+func InsertDecorator(inputString string, regexToFind [][]string, insertValues []string) string { // We add as many regexes we want in pairs. The decorator goes through them and wherever it finds them, inserts the same index value from the insert values
+
+	decoratedString := ""
+
+	for ind, regexPair := range regexToFind {
+
+		decoratedString = ""
+
+		re1 := regexp.MustCompile(regexPair[0])
+		re2 := regexp.MustCompile(regexPair[1])
+
+		allMatch1 := re1.FindAllStringIndex(inputString, -1)
+		allMatch2 := re2.FindAllStringIndex(inputString, -1)
+
+		// Find all the pairs (which start and end at the same direction)
+
+		var insertIndexes []int
+
+		for _, match1 := range allMatch1 {
+			for _, match2 := range allMatch2 {
+				if match1[1] == match2[0] {
+					insertIndexes = append(insertIndexes, match1[1])
+				}
+			}
+		}
+
+		cursor := 0
+
+		for _, insertInd := range insertIndexes {
+			decoratedString += inputString[cursor:insertInd] + insertValues[ind]
+			cursor = insertInd
+		}
+
+		if cursor < len(inputString) {
+			decoratedString += inputString[cursor:]
+		}
+
+		inputString = decoratedString
+
+	}
+
+	return decoratedString
+
+}
