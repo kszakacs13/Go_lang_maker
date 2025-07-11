@@ -162,6 +162,6 @@ Output includes:
 
 ## License
 
-Feel free to use, extend, and share!\
+Feel free to use, extend, and share!
 
 
