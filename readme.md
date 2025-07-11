@@ -1,6 +1,6 @@
 ## Generic Recursive Parser & Interpreter (Go)
 
-This repository contains an example Go program that shows how to build your **own parser and interpreter** for *any grammar you define*.
+This repository contains a lightweight program by which you can make your **own parser and interpreter** for *any grammar you define*.
 
 It’s designed so you can: Define grammar rules\
 Attach interpreter functions to them\
@@ -16,7 +16,7 @@ Clone the repo and run:
 go run main.go programmer.go
 ```
 
-*(Replace **`programmer.go`** with other source files if needed)*
+*(**`programmer.go`** contains all the functions needed, so you can just import it to your project)*
 
 ---
 
