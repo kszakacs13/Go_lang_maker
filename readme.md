@@ -52,7 +52,7 @@ var Grammar = map[string]string{
 ```
 
 *Subrules* are separated by `||`.\
-Regex parts are written between quotes (e.g., `'\+'`).
+Regex parts are written between quotes (e.g., `'\+'`) or what else you define as the separator.
 
 You can define completely different grammars to parse anything, not just arithmetic.
 
