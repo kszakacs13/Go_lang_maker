@@ -5,17 +5,18 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // A test InputString
 
-var InputString = "6 + 4 + 5 * 5 * 5 + 5 + 6"
+var InputString = "6 + 4 + 5 * 5 / (5 * 5) + 5 - 5"
 
 // grammar - we specify grammar rules, which will be tested on the string
 
 var Grammar = map[string]string{
-	"ADD":      "ADD '\\+' ADD || MULT", // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
-	"MULT":     "MULT '\\*' MULT || NUM",
+	"ADD":      "ADD '\\+' ADD || ADD '\\-' ADD || MULT", // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
+	"MULT":     "MULT '\\*' MULT || MULT '\\/' MULT || NUM",
 	"NUM":      "'[0-9]+'",
 	"~ignore~": "[ \t\n]+",
 }
@@ -27,17 +28,26 @@ func addition(ruleNum int, allValuesToPass []string) string { // ruleNum propert
 	returnString := ""
 
 	switch ruleNum {
-	case 0: // In case of the first sub rule, this part runs (NUM '\\+' ADD)
+	case 0: // In case of the first sub rule, this part runs (ADD '\\+' ADD)
 
-		numOne, _ := strconv.Atoi(allValuesToPass[0]) // value of NUM
-		numTwo, _ := strconv.Atoi(allValuesToPass[1]) // value of ADD
+		numOne, _ := strconv.ParseFloat(allValuesToPass[0], 64) // value of ADD
+		numTwo, _ := strconv.ParseFloat(allValuesToPass[1], 64) // value of ADD
 
 		additionVal := numOne + numTwo
 
-		returnString = strconv.Itoa(additionVal)
+		returnString = strconv.FormatFloat(additionVal, 'f', -1, 64)
 
-	case 1: // In case of the second subrule (NUM)
-		returnString = allValuesToPass[0] // value of NUM
+	case 1: // In case of the second subrule (ADD '\\-' ADD)
+
+		numOne, _ := strconv.ParseFloat(allValuesToPass[0], 64) // value of ADD
+		numTwo, _ := strconv.ParseFloat(allValuesToPass[1], 64) // value of ADD
+
+		additionVal := numOne - numTwo
+
+		returnString = strconv.FormatFloat(additionVal, 'f', -1, 64)
+
+	case 2: // In case of the third subrule (MULT)
+		returnString = allValuesToPass[0] // value of MULT
 
 	}
 
@@ -49,17 +59,26 @@ func multiplication(ruleNum int, allValuesToPass []string) string { // ruleNum p
 	returnString := ""
 
 	switch ruleNum {
-	case 0: // In case of the first sub rule, this part runs (NUM '\\+' ADD)
+	case 0: // In case of the first sub rule, this part runs (MULT '\\+' MULT)
 
-		numOne, _ := strconv.Atoi(allValuesToPass[0]) // value of NUM
-		numTwo, _ := strconv.Atoi(allValuesToPass[1]) // value of ADD
+		numOne, _ := strconv.ParseFloat(allValuesToPass[0], 64)
+		numTwo, _ := strconv.ParseFloat(allValuesToPass[1], 64)
 
 		additionVal := numOne * numTwo
 
-		returnString = strconv.Itoa(additionVal)
+		returnString = strconv.FormatFloat(additionVal, 'f', -1, 64)
 
-	case 1: // In case of the second subrule (NUM)
-		returnString = allValuesToPass[0] // value of NUM
+	case 1:
+
+		numOne, _ := strconv.ParseFloat(allValuesToPass[0], 64)
+		numTwo, _ := strconv.ParseFloat(allValuesToPass[1], 64)
+
+		additionVal := numOne / numTwo
+
+		returnString = strconv.FormatFloat(additionVal, 'f', -1, 64)
+
+	case 2: // In case of the third subrule (PRIMARY)
+		returnString = allValuesToPass[0]
 
 	}
 
@@ -77,8 +96,12 @@ var Rules = map[string]func(ruleNum int, allValuesToPass []string) string{
 
 func main() {
 
+	inputStringWOParen := getRidOfParentheses(InputString, Grammar, "ADD", RegexSeparator, Rules, true)
+
+	fmt.Println(inputStringWOParen)
+
 	// If we put a "~ignore~" part into our grammar rule, we should run the ignoreParts function to throw away unwanted characters - this takes our grammar rules and the input string as its two input and will come back with a polished string
-	ignoredPartsInput := IgnoreParts(Grammar, InputString) // If we have an ~ignore~ property in the grammer, we can ignore specific parts from the inputstring
+	ignoredPartsInput := IgnoreParts(Grammar, inputStringWOParen) // If we have an ~ignore~ property in the grammer, we can ignore specific parts from the inputstring
 
 	// The parser function will make a parserTree, this we don't need for anything, but to put it into the interpreter later on - this function takes 4 inputs: the polished input string (if you do not want to ignore anything in the inputstring you can just put the raw string here), the root element of our grammar rules (this is the direct or indirect parent of every other rule), the grammar rules, and the regex separator (which specifies the separator character we write the regex in the rules between, by default it is single quotes)
 	parserTreeInterface := Parser(ignoredPartsInput, "ADD", Grammar, RegexSeparator) // Instead "ADD" we will put the foremost element, as this is the root by which the parser reads the string
@@ -91,5 +114,76 @@ func main() {
 	fmt.Println(ChangeDecorator("AddFGdggDGGggfregg", ".gg", "gg", []string{"_"})) // This function changes a substr that matches a certain regex to the given string or strings, we give the inputstring, the pattern we wanna change, the pattern we wanna keep in the given substr, and the values we want to change the parts of the substring we don't want to keep to. If we add multiple values to the string array, every unkeeped part of the substring will change to the corresponding element (according to the number of the keeped parts). If there are more unkeeped parts than elements in the array, the function will use the last element for all the unkeeped parts that are over the limit.
 
 	fmt.Println(InsertDecorator("AddFGdggDGGggfregg", [][]string{{".g", "g"}, {".", "G"}}, []string{"_", "-"})) // This function puts strings between certain substrings that match the given patterns. First we add the input string, then we specify as many pattern pairs as we want, and then all the string to be inserted inbetween the corresponding patterns.
+
+}
+
+func getRidOfParentheses(inputString string, grammar map[string]string, rootElem string, regexSeparator string, rules map[string]func(ruleNum int, allValuesToPass []string) string, ignoreParts bool) string {
+
+	returnString := ""
+
+	// If there is a '(' inside the funtion, go deeper and run the interpreter
+
+	if strings.Contains(inputString, "(") {
+
+		level := 0
+
+		levelBefore := 0
+
+		tempInside := ""
+
+		for _, char_inp := range inputString {
+
+			if level >= 1 {
+
+				tempInside += string(char_inp) // Converting rune to the corresponding char
+
+			} else {
+
+				if levelBefore != level {
+					if tempInside[len(tempInside)-1] == ')' {
+						tempInside = tempInside[0 : len(tempInside)-1]
+					}
+
+					returnString += getRidOfParentheses(tempInside, grammar, rootElem, regexSeparator, rules, ignoreParts)
+
+				}
+
+				if char_inp != '(' {
+					returnString += string(char_inp)
+				}
+
+			}
+
+			levelBefore = level
+
+			switch char_inp {
+			case '(':
+				level++
+			case ')':
+				level--
+			} // Checking if the char is opening or closing parentheses
+
+		}
+
+		// If the very end was a closing paren, we should add the remaining part to the returnString
+
+		if levelBefore != level {
+			returnString += getRidOfParentheses(tempInside, grammar, rootElem, regexSeparator, rules, ignoreParts)
+		}
+
+	} else {
+
+		ignoredPartsInput := inputString
+
+		if ignoreParts {
+			ignoredPartsInput = IgnoreParts(grammar, inputString)
+		}
+
+		parserTreeInterface := Parser(ignoredPartsInput, rootElem, grammar, regexSeparator)
+
+		returnString = Lexer(rules, parserTreeInterface)
+	}
+
+	return returnString
 
 }
