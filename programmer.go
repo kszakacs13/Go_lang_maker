@@ -62,6 +62,8 @@ func Parser(expressionString string, ruleRowName string, rules map[string]string
 
 						regexUsable := true
 
+						regexPosBetweenAny := false
+
 						for _, dsElem := range downStreamElems {
 
 							// Check if any applies to the pattern
@@ -94,9 +96,26 @@ func Parser(expressionString string, ruleRowName string, rules map[string]string
 
 							}
 
+							// Check if the pattern occurs between any two patterns of the downstream elements
+
+							dsElemSubRules := strings.Split(dsElemRow, " || ")
+
+							for _, subRule := range dsElemSubRules {
+
+								regexPairs := getRegexPairs(expressionString, subRule, regexSeparator)
+
+								for _, regPair := range regexPairs {
+									if regPair[0] <= regexPos[0] && regPair[1] > regexPos[1] {
+										regexPosBetweenAny = true
+									}
+
+								}
+
+							}
+
 						}
 
-						if regexUsable {
+						if regexUsable && !regexPosBetweenAny {
 							found_best_match = true
 							best_match = regexPos
 						}
@@ -284,6 +303,73 @@ func getDownStreamElements(rules map[string]string, element string, separatorCha
 	}
 
 	return return_arr
+
+}
+
+func getRegexPairs(inputStr string, subRule string, separatorChar string) [][]int {
+
+	subRuleElements := strings.Split(subRule, " ")
+
+	allElements := [][][]int{}
+
+	returnPairs := [][]int{}
+
+	for _, block := range subRuleElements {
+
+		if strings.Contains(block, separatorChar) {
+			regex := betweenSigns(block, separatorChar)
+
+			re := regexp.MustCompile(regex)
+			allElements = append(allElements, re.FindAllStringIndex(inputStr, -1))
+		}
+
+	}
+
+	// We return the parts where the other element's regex is greater than this position, but smaller when its next position
+
+	for ind, foundRegex := range allElements {
+
+		for _, foundRegexOnePos := range foundRegex {
+
+			regexEnd := foundRegexOnePos[1]
+
+			for ind2, foundRegex2 := range allElements {
+				if ind2 > ind {
+
+					for _, foundRegexOnePos2 := range foundRegex2 {
+
+						// get all the positions of the two element between the posititons
+
+						if regexEnd < foundRegexOnePos2[0] && allElementsBetween(foundRegex, regexEnd, foundRegexOnePos2[0]) == allElementsBetween(foundRegex2, regexEnd, foundRegexOnePos2[0]) {
+							returnPairs = append(returnPairs, []int{regexEnd, foundRegexOnePos2[0]})
+						}
+					}
+
+				}
+			}
+
+		}
+
+	}
+
+	return returnPairs
+}
+
+func allElementsBetween(arr [][]int, start int, end int) int {
+
+	returnNum := 0
+
+	for _, oneElem := range arr {
+
+		if oneElem[0] >= start && oneElem[1] < end {
+
+			returnNum++
+
+		}
+
+	}
+
+	return returnNum
 
 }
 

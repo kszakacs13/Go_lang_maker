@@ -10,13 +10,14 @@ import (
 
 // A test InputString
 
-var InputString = "6 + 4 + 5 * 5 / (5 * 5) + 5 - 5"
+var InputString = "6 + 4 + 5 * 5 / (5 * (5 / 5)) + 5 - 5"
 
 // grammar - we specify grammar rules, which will be tested on the string
 
 var Grammar = map[string]string{
 	"ADD":      "ADD '\\+' ADD || ADD '\\-' ADD || MULT", // This is the root rule in our case; we can add more sub rule to the root rule, the parser will try them out and use the first suitable; subroots are separated by || characters; all elements of a root is separated by a single space
-	"MULT":     "MULT '\\*' MULT || MULT '\\/' MULT || NUM",
+	"MULT":     "MULT '\\*' MULT || MULT '\\/' MULT || PRIMARY",
+	"PRIMARY":  "'\\(' ADD '\\)' || NUM",
 	"NUM":      "'[0-9]+'",
 	"~ignore~": "[ \t\n]+",
 }
@@ -85,11 +86,16 @@ func multiplication(ruleNum int, allValuesToPass []string) string { // ruleNum p
 	return returnString
 }
 
+func primary(ruleNum int, allValuesToPass []string) string {
+	return allValuesToPass[0]
+}
+
 // rules assigned to grammar - just add the function name to the grammar rule
 
 var Rules = map[string]func(ruleNum int, allValuesToPass []string) string{
-	"ADD":  addition,
-	"MULT": multiplication,
+	"ADD":     addition,
+	"MULT":    multiplication,
+	"PRIMARY": primary,
 }
 
 // test
@@ -101,7 +107,7 @@ func main() {
 	fmt.Println(inputStringWOParen)
 
 	// If we put a "~ignore~" part into our grammar rule, we should run the ignoreParts function to throw away unwanted characters - this takes our grammar rules and the input string as its two input and will come back with a polished string
-	ignoredPartsInput := IgnoreParts(Grammar, inputStringWOParen) // If we have an ~ignore~ property in the grammer, we can ignore specific parts from the inputstring
+	ignoredPartsInput := IgnoreParts(Grammar, InputString) // If we have an ~ignore~ property in the grammer, we can ignore specific parts from the inputstring
 
 	// The parser function will make a parserTree, this we don't need for anything, but to put it into the interpreter later on - this function takes 4 inputs: the polished input string (if you do not want to ignore anything in the inputstring you can just put the raw string here), the root element of our grammar rules (this is the direct or indirect parent of every other rule), the grammar rules, and the regex separator (which specifies the separator character we write the regex in the rules between, by default it is single quotes)
 	parserTreeInterface := Parser(ignoredPartsInput, "ADD", Grammar, RegexSeparator) // Instead "ADD" we will put the foremost element, as this is the root by which the parser reads the string
