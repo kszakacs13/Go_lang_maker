@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // A test InputString
@@ -102,10 +101,6 @@ var Rules = map[string]func(ruleNum int, allValuesToPass []string) string{
 
 func main() {
 
-	inputStringWOParen := getRidOfParentheses(InputString, Grammar, "ADD", RegexSeparator, Rules, true)
-
-	fmt.Println(inputStringWOParen)
-
 	// If we put a "~ignore~" part into our grammar rule, we should run the ignoreParts function to throw away unwanted characters - this takes our grammar rules and the input string as its two input and will come back with a polished string
 	ignoredPartsInput := IgnoreParts(Grammar, InputString) // If we have an ~ignore~ property in the grammer, we can ignore specific parts from the inputstring
 
@@ -120,76 +115,5 @@ func main() {
 	fmt.Println(ChangeDecorator("AddFGdggDGGggfregg", ".gg", "gg", []string{"_"})) // This function changes a substr that matches a certain regex to the given string or strings, we give the inputstring, the pattern we wanna change, the pattern we wanna keep in the given substr, and the values we want to change the parts of the substring we don't want to keep to. If we add multiple values to the string array, every unkeeped part of the substring will change to the corresponding element (according to the number of the keeped parts). If there are more unkeeped parts than elements in the array, the function will use the last element for all the unkeeped parts that are over the limit.
 
 	fmt.Println(InsertDecorator("AddFGdggDGGggfregg", [][]string{{".g", "g"}, {".", "G"}}, []string{"_", "-"})) // This function puts strings between certain substrings that match the given patterns. First we add the input string, then we specify as many pattern pairs as we want, and then all the string to be inserted inbetween the corresponding patterns.
-
-}
-
-func getRidOfParentheses(inputString string, grammar map[string]string, rootElem string, regexSeparator string, rules map[string]func(ruleNum int, allValuesToPass []string) string, ignoreParts bool) string {
-
-	returnString := ""
-
-	// If there is a '(' inside the funtion, go deeper and run the interpreter
-
-	if strings.Contains(inputString, "(") {
-
-		level := 0
-
-		levelBefore := 0
-
-		tempInside := ""
-
-		for _, char_inp := range inputString {
-
-			if level >= 1 {
-
-				tempInside += string(char_inp) // Converting rune to the corresponding char
-
-			} else {
-
-				if levelBefore != level {
-					if tempInside[len(tempInside)-1] == ')' {
-						tempInside = tempInside[0 : len(tempInside)-1]
-					}
-
-					returnString += getRidOfParentheses(tempInside, grammar, rootElem, regexSeparator, rules, ignoreParts)
-
-				}
-
-				if char_inp != '(' {
-					returnString += string(char_inp)
-				}
-
-			}
-
-			levelBefore = level
-
-			switch char_inp {
-			case '(':
-				level++
-			case ')':
-				level--
-			} // Checking if the char is opening or closing parentheses
-
-		}
-
-		// If the very end was a closing paren, we should add the remaining part to the returnString
-
-		if levelBefore != level {
-			returnString += getRidOfParentheses(tempInside, grammar, rootElem, regexSeparator, rules, ignoreParts)
-		}
-
-	} else {
-
-		ignoredPartsInput := inputString
-
-		if ignoreParts {
-			ignoredPartsInput = IgnoreParts(grammar, inputString)
-		}
-
-		parserTreeInterface := Parser(ignoredPartsInput, rootElem, grammar, regexSeparator)
-
-		returnString = Lexer(rules, parserTreeInterface)
-	}
-
-	return returnString
 
 }
